@@ -1,0 +1,13 @@
+{
+  "network": "bscTestnet",
+  "timestamp": "2026-04-16T19:25:17.521Z",
+  "deployer": "0x4D28DE16E06FBc99EF5405aa0354B6453BA25447",
+  "addresses": {
+    "dwapTokenProxy": "0x1EA5a530d50AF1670936e2F4EDeEC10967704F0d",
+    "dwapTokenImplementation": "0xE9C9ec38a10EEa06F9eEa5d2F662bAb184fc9F97",
+    "dwapTimelock": "0x695Bc90e7af1b5e3d99eA22108eF0159DF2Ef42E",
+    "dwapGovernor": "0x30e3d6BdeF6E1FC13B22333e7A8D20463b3F023c",
+    "dwapBurnControllerProxy": "0x330ADf6f8c900D117cFE55286eF59E1abDaCc900",
+    "dwapBurnControllerImplementation": "0x382C30DaE88A57749ccEF85c4265c0BE648F7d1D"
+  }
+}

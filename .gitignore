@@ -1,0 +1,17 @@
+node_modules/
+artifacts/
+cache/
+.tools/
+.env
+.env.local
+.DS_Store
+*.log
+stdout.txt
+stderr.txt
+deploy_output.txt
+hardhat_compile_output.txt
+dist/
+build/
+deployment-*.json
+coverage/
+.mocharc.json
