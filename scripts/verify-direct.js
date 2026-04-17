@@ -12,12 +12,12 @@ const CHAIN_ID = 97; // BSC Testnet
 const API_URL = `https://api.etherscan.io/v2/api?chainid=${CHAIN_ID}`;
 
 const ADDRESSES = {
-  tokenImpl: "0xE9C9ec38a10EEa06F9eEa5d2F662bAb184fc9F97",
-  tokenProxy: "0x1EA5a530d50AF1670936e2F4EDeEC10967704F0d",
-  timelock: "0x695Bc90e7af1b5e3d99eA22108eF0159DF2Ef42E",
-  governor: "0x30e3d6BdeF6E1FC13B22333e7A8D20463b3F023c",
-  burnControllerImpl: "0x382C30DaE88A57749ccEF85c4265c0BE648F7d1D",
-  burnControllerProxy: "0x330ADf6f8c900D117cFE55286eF59E1abDaCc900",
+  tokenImpl: "0xf768572Dd3de8C1bB1983dBa268EE4C85829c4D1",
+  tokenProxy: "0x3348433174d453D15436E9cE0A5124DdBd07Fb6E",
+  timelock: "0xec6d0EdF408Db655D884d4bb1027177f8Ad5fD90",
+  governor: "0x1124dF8A1C27B9B4265b3293E61B36d0fEFd4F98",
+  burnControllerImpl: "0x286F157393092e7BFdd51934721d9E624024E5D8",
+  burnControllerProxy: "0x760c11c054273D400B1CdbD9146095b8BEE197F8",
 };
 
 // Read build info from hardhat artifacts

@@ -19,6 +19,10 @@ async function main() {
     deployer.address,
   ]);
 
+  // Wait for implementation to propagate on testnet
+  console.log("   Waiting for implementation to propagate...");
+  await new Promise(r => setTimeout(r, 5000));
+
   // Deploy Token Proxy
   console.log("2. Deploying DWAP Token Proxy...");
   const DWAP_TokenProxy = await hre.ethers.getContractFactory("DWAP_TokenProxy");
@@ -66,6 +70,10 @@ async function main() {
     deployer.address,
     0, // No daily limit initially
   ]);
+
+  // Wait for implementation to propagate on testnet
+  console.log("   Waiting for implementation to propagate...");
+  await new Promise(r => setTimeout(r, 5000));
 
   console.log("6. Deploying DWAP Burn Controller Proxy...");
   const DWAP_BurnControllerProxy = await hre.ethers.getContractFactory(
