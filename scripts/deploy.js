@@ -1,98 +1,61 @@
 const hre = require("hardhat");
 
 async function main() {
-  console.log("Starting DWAP BSC Deployment...\n");
+  console.log("Starting DWAP BSC Deployment (Immutable Contracts)...\n");
 
   const [deployer] = await hre.ethers.getSigners();
   console.log(`Deploying from account: ${deployer.address}\n`);
 
   // ==================== 1. Deploy DWAP Token ====================
-  console.log("1. Deploying DWAP Token Implementation...");
+  console.log("1. Deploying DWAP Token...");
   const DWAP_Token = await hre.ethers.getContractFactory("DWAP_Token");
-  const dwapTokenImpl = await DWAP_Token.deploy();
-  await dwapTokenImpl.waitForDeployment();
-  const dwapTokenImplAddr = await dwapTokenImpl.getAddress();
-  console.log(`   DWAP Token Implementation: ${dwapTokenImplAddr}`);
-
-  // Initialize data for proxy
-  const initializeData = dwapTokenImpl.interface.encodeFunctionData("initialize", [
-    deployer.address,
-  ]);
-
-  // Wait for implementation to propagate on testnet
-  console.log("   Waiting for implementation to propagate...");
-  await new Promise(r => setTimeout(r, 5000));
-
-  // Deploy Token Proxy
-  console.log("2. Deploying DWAP Token Proxy...");
-  const DWAP_TokenProxy = await hre.ethers.getContractFactory("DWAP_TokenProxy");
-  const dwapTokenProxy = await DWAP_TokenProxy.deploy(dwapTokenImplAddr, initializeData);
-  await dwapTokenProxy.waitForDeployment();
-  const dwapTokenProxyAddr = await dwapTokenProxy.getAddress();
-  console.log(`   DWAP Token Proxy: ${dwapTokenProxyAddr}\n`);
+  const dwapToken = await DWAP_Token.deploy(deployer.address);
+  await dwapToken.waitForDeployment();
+  const dwapTokenAddr = await dwapToken.getAddress();
+  console.log(`   DWAP Token: ${dwapTokenAddr}\n`);
 
   // ==================== 2. Deploy Timelock ====================
-  console.log("3. Deploying DWAP Timelock...");
+  console.log("2. Deploying DWAP Timelock...");
   const minDelay = 172800; // 2 days
   const DWAP_Timelock = await hre.ethers.getContractFactory("DWAP_Timelock");
   const dwapTimelock = await DWAP_Timelock.deploy(
     minDelay,
-    [], // proposers (can be set by Governor later)
-    [deployer.address], // executors (initial executor is deployer)
-    deployer.address // admin
+    [],                  // proposers (Governor will be added below)
+    [deployer.address],  // executors (initial)
+    deployer.address     // admin
   );
   await dwapTimelock.waitForDeployment();
   const dwapTimelockAddr = await dwapTimelock.getAddress();
   console.log(`   DWAP Timelock: ${dwapTimelockAddr}\n`);
 
   // ==================== 3. Deploy Governor ====================
-  console.log("4. Deploying DWAP Governor...");
+  console.log("3. Deploying DWAP Governor...");
+  const PROPOSAL_FEE = hre.ethers.parseEther("1000"); // 1000 DWAP proposal fee (burned)
   const DWAP_Governor = await hre.ethers.getContractFactory("DWAP_Governor");
   const dwapGovernor = await DWAP_Governor.deploy(
-    dwapTokenProxyAddr, // DWAP Token for voting
-    dwapTimelockAddr // Timelock for execution delay
+    dwapTokenAddr,
+    dwapTimelockAddr,
+    PROPOSAL_FEE
   );
   await dwapGovernor.waitForDeployment();
   const dwapGovernorAddr = await dwapGovernor.getAddress();
   console.log(`   DWAP Governor: ${dwapGovernorAddr}\n`);
 
   // ==================== 4. Deploy Burn Controller ====================
-  console.log("5. Deploying DWAP Burn Controller Implementation...");
+  console.log("4. Deploying DWAP Burn Controller...");
   const DWAP_BurnController = await hre.ethers.getContractFactory("DWAP_BurnController");
-  const burnControllerImpl = await DWAP_BurnController.deploy();
-  await burnControllerImpl.waitForDeployment();
-  const burnControllerImplAddr = await burnControllerImpl.getAddress();
-  console.log(`   DWAP Burn Controller Implementation: ${burnControllerImplAddr}`);
-
-  // Initialize Burn Controller Proxy
-  const initializeBurnData = burnControllerImpl.interface.encodeFunctionData("initialize", [
-    dwapTokenProxyAddr,
+  const burnController = await DWAP_BurnController.deploy(
+    dwapTokenAddr,
     deployer.address,
-    0, // No daily limit initially
-  ]);
-
-  // Wait for implementation to propagate on testnet
-  console.log("   Waiting for implementation to propagate...");
-  await new Promise(r => setTimeout(r, 5000));
-
-  console.log("6. Deploying DWAP Burn Controller Proxy...");
-  const DWAP_BurnControllerProxy = await hre.ethers.getContractFactory(
-    "DWAP_BurnControllerProxy"
+    0 // No daily limit initially (0 = unlimited)
   );
-  const burnControllerProxy = await DWAP_BurnControllerProxy.deploy(
-    burnControllerImplAddr,
-    initializeBurnData
-  );
-  await burnControllerProxy.waitForDeployment();
-  const burnControllerProxyAddr = await burnControllerProxy.getAddress();
-  console.log(`   DWAP Burn Controller Proxy: ${burnControllerProxyAddr}\n`);
+  await burnController.waitForDeployment();
+  const burnControllerAddr = await burnController.getAddress();
+  console.log(`   DWAP Burn Controller: ${burnControllerAddr}\n`);
 
   // ==================== 5. Set up Timelock roles ====================
-  console.log("7. Setting up Timelock roles...");
-  const timelockContract = await hre.ethers.getContractAt(
-    "DWAP_Timelock",
-    dwapTimelockAddr
-  );
+  console.log("5. Setting up Timelock roles...");
+  const timelockContract = await hre.ethers.getContractAt("DWAP_Timelock", dwapTimelockAddr);
 
   // Grant PROPOSER_ROLE to Governor
   const PROPOSER_ROLE = await timelockContract.PROPOSER_ROLE();
@@ -100,23 +63,31 @@ async function main() {
   await tx1.wait();
   console.log(`   Granted PROPOSER_ROLE to Governor`);
 
-  // Grant EXECUTOR_ROLE to public (0x0) for anyone to execute
+  // Grant EXECUTOR_ROLE to public (address(0)) — anyone can execute after timelock
   const EXECUTOR_ROLE = await timelockContract.EXECUTOR_ROLE();
-  const PUBLIC_ADDRESS = "0x0000000000000000000000000000000000000000";
-  const tx2 = await timelockContract.grantRole(EXECUTOR_ROLE, PUBLIC_ADDRESS);
+  const tx2 = await timelockContract.grantRole(EXECUTOR_ROLE, "0x0000000000000000000000000000000000000000");
   await tx2.wait();
-  console.log(`   Granted EXECUTOR_ROLE to public\n`);
+  console.log(`   Granted EXECUTOR_ROLE to public`);
+
+  // Grant CANCELLER_ROLE to Governor
+  const CANCELLER_ROLE = await timelockContract.CANCELLER_ROLE();
+  const tx3 = await timelockContract.grantRole(CANCELLER_ROLE, dwapGovernorAddr);
+  await tx3.wait();
+  console.log(`   Granted CANCELLER_ROLE to Governor\n`);
+
+  // NOTE: To fully decentralize on mainnet, renounce DEFAULT_ADMIN_ROLE:
+  // const DEFAULT_ADMIN_ROLE = await timelockContract.DEFAULT_ADMIN_ROLE();
+  // await timelockContract.renounceRole(DEFAULT_ADMIN_ROLE, deployer.address);
+  // console.log("   Renounced DEFAULT_ADMIN_ROLE from deployer");
 
   // ==================== 6. Output Summary ====================
   console.log("=".repeat(60));
-  console.log("DEPLOYMENT SUMMARY");
+  console.log("DEPLOYMENT SUMMARY (Immutable — Non-Upgradeable)");
   console.log("=".repeat(60));
-  console.log(`DWAP Token Proxy:          ${dwapTokenProxyAddr}`);
-  console.log(`DWAP Token Implementation: ${dwapTokenImplAddr}`);
-  console.log(`DWAP Governor:             ${dwapGovernorAddr}`);
-  console.log(`DWAP Timelock:             ${dwapTimelockAddr}`);
-  console.log(`DWAP Burn Controller:      ${burnControllerProxyAddr}`);
-  console.log(`DWAP Burn Ctrl Impl:       ${burnControllerImplAddr}`);
+  console.log(`DWAP Token:           ${dwapTokenAddr}`);
+  console.log(`DWAP Timelock:        ${dwapTimelockAddr}`);
+  console.log(`DWAP Governor:        ${dwapGovernorAddr}`);
+  console.log(`DWAP Burn Controller: ${burnControllerAddr}`);
   console.log("=".repeat(60));
 
   // Save deployment addresses
@@ -124,15 +95,16 @@ async function main() {
   const deploymentData = {
     network: hre.network.name,
     timestamp: new Date().toISOString(),
-    addresses: {
-      dwapToken: dwapTokenProxyAddr,
-      dwapTokenImpl: dwapTokenImplAddr,
-      dwapGovernor: dwapGovernorAddr,
-      dwapTimelock: dwapTimelockAddr,
-      burnController: burnControllerProxyAddr,
-      burnControllerImpl: burnControllerImplAddr,
-    },
+    solidityVersion: "0.8.34",
+    architecture: "immutable (non-upgradeable)",
     deployer: deployer.address,
+    proposalFee: "1000 DWAP",
+    addresses: {
+      dwapToken: dwapTokenAddr,
+      dwapTimelock: dwapTimelockAddr,
+      dwapGovernor: dwapGovernorAddr,
+      dwapBurnController: burnControllerAddr,
+    },
   };
 
   fs.writeFileSync(
@@ -141,13 +113,12 @@ async function main() {
   );
   console.log("\nDeployment data saved to deployment file.\n");
 
-  // ==================== 7. Next Steps ====================
   console.log("NEXT STEPS:");
-  console.log(`1. Verify contracts on BscScan:`);
-  console.log(`   npx hardhat verify --network ${hre.network.name} ${dwapTokenImplAddr}`);
-  console.log(`   npx hardhat verify --network ${hre.network.name} ${dwapGovernorAddr} ${dwapTokenProxyAddr} ${dwapTimelockAddr}`);
-  console.log(`2. Transfer ownership to DWAP Governor when ready`);
-  console.log(`3. Community members can now vote on proposals and burn tokens\n`);
+  console.log("1. Verify contracts on BscScan: node scripts/verify-direct.js");
+  console.log("2. Transfer Token ownership to Timelock for DAO control");
+  console.log("3. Transfer BurnController ownership to Timelock for DAO control");
+  console.log("4. Renounce Timelock admin role (mainnet only)");
+  console.log("5. Community: delegate votes, create proposals, burn tokens\n");
 }
 
 main()

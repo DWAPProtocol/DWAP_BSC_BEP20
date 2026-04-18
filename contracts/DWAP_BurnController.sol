@@ -1,32 +1,37 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-interface IDWAP is IERC20 {
-    function communityBurn(uint256 amount) external;
+interface IDWAP {
+    function balanceOf(address account) external view returns (uint256);
     function communityBurnFrom(address account, uint256 amount) external;
-    function ownerBurn(uint256 amount) external;
+    function allowance(address owner, address spender) external view returns (uint256);
 }
 
 /**
  * @title DWAP Burn Controller
- * @dev Controls burn mechanisms for the DWAP token
- * - Allows community to burn tokens through various mechanisms
- * - Tracks burn history and statistics
- * - Owner can configure burn policies
- * - Ownership can be transferred to DAO
+ * @dev Immutable controller for community-driven DWAP token burning
+ *
+ * Features:
+ * - Community burn with configurable daily limits per user
+ * - Minimum burn amount enforcement
+ * - Pausable: emergency pause for burn operations
+ * - ReentrancyGuard: protection against reentrancy attacks
+ * - Full burn statistics tracking
+ * - Ownership transferable to DAO for decentralized governance
+ * - Immutable: non-upgradeable for maximum trust
  */
-contract DWAP_BurnController is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    IDWAP public dwapToken;
+contract DWAP_BurnController is Ownable, Pausable, ReentrancyGuard {
+
+    IDWAP public immutable dwapToken;
 
     // Burn configurations
-    bool public burnEnabled = true;
+    bool public burnEnabled;
     uint256 public dailyBurnLimit;
-    uint256 public minBurnAmount = 1e18; // Minimum 1 token to burn
+    uint256 public minBurnAmount;
 
     // Tracking
     mapping(address => uint256) public dailyBurnedAmount;
@@ -34,106 +39,84 @@ contract DWAP_BurnController is Initializable, OwnableUpgradeable, UUPSUpgradeab
     uint256 public totalCommunityBurned;
 
     // Events
-    event BurnExecuted(address indexed burner, uint256 amount, string burnType);
+    event BurnExecuted(address indexed burner, uint256 amount);
     event BurnPolicyUpdated(bool enabled, uint256 dailyLimit, uint256 minAmount);
-    event DWAPTokenUpdated(address indexed newToken);
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    /**
-     * @dev Initialize the Burn Controller
-     * @param _dwapToken Address of DWAP token contract
-     * @param _owner Owner address (can be transferred to DAO later)
-     * @param _dailyBurnLimit Maximum burn per day per user (0 = unlimited)
-     */
-    function initialize(
+    constructor(
         address _dwapToken,
         address _owner,
         uint256 _dailyBurnLimit
-    ) public initializer {
+    ) Ownable(_owner) {
         require(_dwapToken != address(0), "Invalid token address");
-        require(_owner != address(0), "Invalid owner address");
 
-        __Ownable_init(_owner);
         dwapToken = IDWAP(_dwapToken);
         dailyBurnLimit = _dailyBurnLimit;
+        burnEnabled = true;
+        minBurnAmount = 1e18; // Minimum 1 DWAP
     }
 
     /**
-     * @dev Burn tokens from caller's balance
+     * @dev Community burn: caller burns their own tokens via the controller
+     *      Caller must first approve this contract on the DWAP token.
      * @param amount Amount to burn
      */
-    function burnTokens(uint256 amount) external {
+    function burnTokens(uint256 amount) external whenNotPaused nonReentrant {
         require(burnEnabled, "Burn is currently disabled");
         require(amount >= minBurnAmount, "Amount below minimum burn");
-        require(
-            dwapToken.balanceOf(msg.sender) >= amount,
-            "Insufficient balance"
-        );
+        require(dwapToken.balanceOf(msg.sender) >= amount, "Insufficient balance");
 
         // Check daily limit if set
         if (dailyBurnLimit > 0) {
             uint256 today = block.timestamp / 1 days;
-            uint256 daysSinceLastBurn = today - lastBurnDay[msg.sender];
 
-            if (daysSinceLastBurn == 0) {
+            if (lastBurnDay[msg.sender] == today) {
                 require(
                     dailyBurnedAmount[msg.sender] + amount <= dailyBurnLimit,
                     "Daily burn limit exceeded"
                 );
                 dailyBurnedAmount[msg.sender] += amount;
             } else {
+                require(amount <= dailyBurnLimit, "Exceeds daily burn limit");
                 dailyBurnedAmount[msg.sender] = amount;
                 lastBurnDay[msg.sender] = today;
             }
         }
 
-        // Burn from the user's balance using their prior allowance to the controller.
         dwapToken.communityBurnFrom(msg.sender, amount);
         totalCommunityBurned += amount;
 
-        emit BurnExecuted(msg.sender, amount, "community");
+        emit BurnExecuted(msg.sender, amount);
     }
 
     /**
-     * @dev Owner burn tokens (from owner's balance)
-     * @param amount Amount to burn
-     */
-    function ownerBurnTokens(uint256 amount) external onlyOwner {
-        require(amount > 0, "Amount must be greater than 0");
-        dwapToken.communityBurnFrom(msg.sender, amount);
-        emit BurnExecuted(msg.sender, amount, "owner");
-    }
-
-    /**
-     * @dev Update burn policy
-     * @param enabled Whether burning is enabled
+     * @dev Update burn policy (owner / DAO only)
+     * @param _enabled Whether burning is enabled
      * @param _dailyLimit Daily burn limit per user (0 = unlimited)
      * @param _minAmount Minimum amount to burn in one transaction
      */
     function setBurnPolicy(
-        bool enabled,
+        bool _enabled,
         uint256 _dailyLimit,
         uint256 _minAmount
     ) external onlyOwner {
-        burnEnabled = enabled;
+        burnEnabled = _enabled;
         dailyBurnLimit = _dailyLimit;
         minBurnAmount = _minAmount;
-
-        emit BurnPolicyUpdated(enabled, _dailyLimit, _minAmount);
+        emit BurnPolicyUpdated(_enabled, _dailyLimit, _minAmount);
     }
 
     /**
-     * @dev Update DWAP token address
-     * @param newToken New token address
+     * @dev Pause burn operations (emergency)
      */
-    function setDWAPToken(address newToken) external onlyOwner {
-        require(newToken != address(0), "Invalid token address");
-        dwapToken = IDWAP(newToken);
-        emit DWAPTokenUpdated(newToken);
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Unpause burn operations
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /**
@@ -146,15 +129,10 @@ contract DWAP_BurnController is Initializable, OwnableUpgradeable, UUPSUpgradeab
         returns (uint256 burned, uint256 limit, uint256 remaining)
     {
         uint256 today = block.timestamp / 1 days;
-        uint256 daysSinceLastBurn = today - lastBurnDay[user];
-
-        burned = daysSinceLastBurn == 0 ? dailyBurnedAmount[user] : 0;
+        burned = lastBurnDay[user] == today ? dailyBurnedAmount[user] : 0;
         limit = dailyBurnLimit;
-        remaining = dailyBurnLimit > burned ? dailyBurnLimit - burned : 0;
+        remaining = (dailyBurnLimit > 0 && dailyBurnLimit > burned)
+            ? dailyBurnLimit - burned
+            : 0;
     }
-
-    /**
-     * @dev Authorize upgrade
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

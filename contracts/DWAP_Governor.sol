@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
 import "@openzeppelin/contracts/governance/Governor.sol";
@@ -8,16 +8,20 @@ import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 /**
  * @title DWAP Governor
  * @dev OpenZeppelin Governor implementation for DWAP DAO
- * - Uses DWAP token for voting
- * - 2-day voting delay (48 hours)
- * - 1-week voting period
- * - 4% quorum required
- * - Majority rule (50%+ for approval)
+ *
+ * Governance parameters:
+ * - 2-day voting delay (48 hours) before voting starts
+ * - 1-week voting period (7 days)
+ * - 4% quorum required (of total voting power)
+ * - 1,000,000 DWAP proposal threshold (anti-spam)
  * - 2-day timelock delay before execution
+ * - Proposal fee: burned on submission to prevent spam
+ * - All settings changeable by governance proposals
  */
 contract DWAP_Governor is
     Governor,
@@ -27,22 +31,68 @@ contract DWAP_Governor is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
+    ERC20Burnable public immutable feeToken;
+    uint256 public proposalFee;
+
+    event ProposalFeeUpdated(uint256 oldFee, uint256 newFee);
+    event ProposalFeeBurned(uint256 indexed proposalId, address indexed proposer, uint256 fee);
+
     /**
      * @dev Constructor for DWAP Governor
-     * @param _token DWAP token contract
+     * @param _token DWAP token contract (also used for proposal fee burning)
      * @param _timelock Timelock controller contract
+     * @param _proposalFee Initial proposal fee in DWAP (burned on propose)
      */
-    constructor(IVotes _token, TimelockController _timelock)
+    constructor(
+        IVotes _token,
+        TimelockController _timelock,
+        uint256 _proposalFee
+    )
         Governor("DWAP_Governor")
         GovernorSettings(
-            48 hours, // 2-day voting delay
-            604800, // 1-week voting period (604800 seconds)
-            1e18 // 1 token minimum proposal threshold
+            48 hours,        // 2-day voting delay
+            604800,          // 1-week voting period (604800 seconds)
+            1_000_000e18     // 1M DWAP proposal threshold
         )
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(4) // 4% quorum
         GovernorTimelockControl(_timelock)
-    {}
+    {
+        feeToken = ERC20Burnable(address(_token));
+        proposalFee = _proposalFee;
+    }
+
+    /**
+     * @dev Update proposal fee (governance only — via timelock)
+     * @param newFee New fee amount in DWAP tokens
+     */
+    function setProposalFee(uint256 newFee) external onlyGovernance {
+        uint256 oldFee = proposalFee;
+        proposalFee = newFee;
+        emit ProposalFeeUpdated(oldFee, newFee);
+    }
+
+    /**
+     * @dev Override propose to charge & burn a proposal fee
+     *      Proposer must approve Governor for the fee amount before calling.
+     */
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override(Governor) returns (uint256) {
+        // Threshold check happens inside super.propose
+        uint256 proposalId = super.propose(targets, values, calldatas, description);
+
+        // Burn proposal fee after successful proposal creation
+        if (proposalFee > 0) {
+            feeToken.burnFrom(msg.sender, proposalFee);
+            emit ProposalFeeBurned(proposalId, msg.sender, proposalFee);
+        }
+
+        return proposalId;
+    }
 
     // The following functions are overrides required by Solidity.
 

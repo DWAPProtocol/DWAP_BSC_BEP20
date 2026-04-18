@@ -12,12 +12,10 @@ const CHAIN_ID = 97; // BSC Testnet
 const API_URL = `https://api.etherscan.io/v2/api?chainid=${CHAIN_ID}`;
 
 const ADDRESSES = {
-  tokenImpl: "0xf768572Dd3de8C1bB1983dBa268EE4C85829c4D1",
-  tokenProxy: "0x3348433174d453D15436E9cE0A5124DdBd07Fb6E",
-  timelock: "0xec6d0EdF408Db655D884d4bb1027177f8Ad5fD90",
-  governor: "0x1124dF8A1C27B9B4265b3293E61B36d0fEFd4F98",
-  burnControllerImpl: "0x286F157393092e7BFdd51934721d9E624024E5D8",
-  burnControllerProxy: "0x760c11c054273D400B1CdbD9146095b8BEE197F8",
+  token: "0x394a17ac08ed24CD715e5743006a36317b6a8039",
+  timelock: "0xC2f78A6D551f0738EdB6a69c2BE5c45126F00324",
+  governor: "0x7cCDBecBC615fAf0dB904Ae344EDE7B0Db7c8ABf",
+  burnController: "0x3dc98DD581Cb401A9bc3c41654C73237559A7E6b",
 };
 
 // Read build info from hardhat artifacts
@@ -141,7 +139,7 @@ async function verifyContract(name, address, contractPath, constructorArgs) {
 }
 
 async function main() {
-  console.log("DWAP Contract Verification - Etherscan V2 API");
+  console.log("DWAP Contract Verification - Etherscan V2 API (Immutable Contracts)");
   console.log(`Chain ID: ${CHAIN_ID} (BSC Testnet)`);
   console.log(`API Key: ${API_KEY ? API_KEY.substring(0, 6) + "..." : "MISSING"}\n`);
 
@@ -150,43 +148,25 @@ async function main() {
     process.exit(1);
   }
 
-  // Encode constructor arguments
   const { ethers } = require("ethers");
+  const DEPLOYER = "0x4D28DE16E06FBc99EF5405aa0354B6453BA25447";
 
-  // Token Implementation - no constructor args
-  await verifyContract(
-    "DWAP Token Implementation",
-    ADDRESSES.tokenImpl,
-    "contracts/DWAP_Token.sol:DWAP_Token",
-    ""
-  );
-
-  // Token Proxy - constructor(address implementation, bytes data)
-  const tokenAbi = JSON.parse(
-    fs.readFileSync(
-      path.join(__dirname, "..", "artifacts", "contracts", "DWAP_Token.sol", "DWAP_Token.json"),
-      "utf8"
-    )
-  ).abi;
-  const tokenIface = new ethers.Interface(tokenAbi);
-  const tokenInitData = tokenIface.encodeFunctionData("initialize", [
-    "0x4D28DE16E06FBc99EF5405aa0354B6453BA25447",
-  ]);
-  const tokenProxyArgs = ethers.AbiCoder.defaultAbiCoder()
-    .encode(["address", "bytes"], [ADDRESSES.tokenImpl, tokenInitData])
+  // 1. DWAP Token — constructor(address initialOwner)
+  const tokenArgs = ethers.AbiCoder.defaultAbiCoder()
+    .encode(["address"], [DEPLOYER])
     .slice(2);
   await verifyContract(
-    "DWAP Token Proxy",
-    ADDRESSES.tokenProxy,
-    "contracts/Proxies.sol:DWAP_TokenProxy",
-    tokenProxyArgs
+    "DWAP Token",
+    ADDRESSES.token,
+    "contracts/DWAP_Token.sol:DWAP_Token",
+    tokenArgs
   );
 
-  // Timelock - constructor(uint256 minDelay, address[] proposers, address[] executors, address admin)
+  // 2. DWAP Timelock — constructor(uint256, address[], address[], address)
   const timelockArgs = ethers.AbiCoder.defaultAbiCoder()
     .encode(
       ["uint256", "address[]", "address[]", "address"],
-      [172800, [], ["0x4D28DE16E06FBc99EF5405aa0354B6453BA25447"], "0x4D28DE16E06FBc99EF5405aa0354B6453BA25447"]
+      [172800, [], [DEPLOYER], DEPLOYER]
     )
     .slice(2);
   await verifyContract(
@@ -196,9 +176,13 @@ async function main() {
     timelockArgs
   );
 
-  // Governor - constructor(IVotes token, TimelockController timelock)
+  // 3. DWAP Governor — constructor(IVotes, TimelockController, uint256)
+  const PROPOSAL_FEE = ethers.parseEther("1000");
   const governorArgs = ethers.AbiCoder.defaultAbiCoder()
-    .encode(["address", "address"], [ADDRESSES.tokenProxy, ADDRESSES.timelock])
+    .encode(
+      ["address", "address", "uint256"],
+      [ADDRESSES.token, ADDRESSES.timelock, PROPOSAL_FEE]
+    )
     .slice(2);
   await verifyContract(
     "DWAP Governor",
@@ -207,35 +191,18 @@ async function main() {
     governorArgs
   );
 
-  // BurnController Implementation - no constructor args
-  await verifyContract(
-    "DWAP Burn Controller Implementation",
-    ADDRESSES.burnControllerImpl,
-    "contracts/DWAP_BurnController.sol:DWAP_BurnController",
-    ""
-  );
-
-  // BurnController Proxy - constructor(address implementation, bytes data)
-  const burnAbi = JSON.parse(
-    fs.readFileSync(
-      path.join(__dirname, "..", "artifacts", "contracts", "DWAP_BurnController.sol", "DWAP_BurnController.json"),
-      "utf8"
+  // 4. DWAP Burn Controller — constructor(address, address, uint256)
+  const burnArgs = ethers.AbiCoder.defaultAbiCoder()
+    .encode(
+      ["address", "address", "uint256"],
+      [ADDRESSES.token, DEPLOYER, 0]
     )
-  ).abi;
-  const burnIface = new ethers.Interface(burnAbi);
-  const burnInitData = burnIface.encodeFunctionData("initialize", [
-    ADDRESSES.tokenProxy,
-    "0x4D28DE16E06FBc99EF5405aa0354B6453BA25447",
-    0,
-  ]);
-  const burnProxyArgs = ethers.AbiCoder.defaultAbiCoder()
-    .encode(["address", "bytes"], [ADDRESSES.burnControllerImpl, burnInitData])
     .slice(2);
   await verifyContract(
-    "DWAP Burn Controller Proxy",
-    ADDRESSES.burnControllerProxy,
-    "contracts/Proxies.sol:DWAP_BurnControllerProxy",
-    burnProxyArgs
+    "DWAP Burn Controller",
+    ADDRESSES.burnController,
+    "contracts/DWAP_BurnController.sol:DWAP_BurnController",
+    burnArgs
   );
 
   console.log("\n" + "=".repeat(50));

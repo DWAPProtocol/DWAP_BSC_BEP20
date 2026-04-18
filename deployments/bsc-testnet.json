@@ -1,14 +1,14 @@
 {
   "network": "bscTestnet",
-  "timestamp": "2026-04-17T00:00:00.000Z",
-  "deployer": "0x4D28DE16E06FBc99EF5405aa0354B6453BA25447",
+  "timestamp": "2026-04-18T00:00:00.000Z",
   "solidityVersion": "0.8.34",
+  "architecture": "immutable (non-upgradeable)",
+  "deployer": "0x4D28DE16E06FBc99EF5405aa0354B6453BA25447",
+  "proposalFee": "1000 DWAP",
   "addresses": {
-    "dwapTokenProxy": "0x3348433174d453D15436E9cE0A5124DdBd07Fb6E",
-    "dwapTokenImplementation": "0xf768572Dd3de8C1bB1983dBa268EE4C85829c4D1",
-    "dwapTimelock": "0xec6d0EdF408Db655D884d4bb1027177f8Ad5fD90",
-    "dwapGovernor": "0x1124dF8A1C27B9B4265b3293E61B36d0fEFd4F98",
-    "dwapBurnControllerProxy": "0x760c11c054273D400B1CdbD9146095b8BEE197F8",
-    "dwapBurnControllerImplementation": "0x286F157393092e7BFdd51934721d9E624024E5D8"
+    "dwapToken": "0x394a17ac08ed24CD715e5743006a36317b6a8039",
+    "dwapTimelock": "0xC2f78A6D551f0738EdB6a69c2BE5c45126F00324",
+    "dwapGovernor": "0x7cCDBecBC615fAf0dB904Ae344EDE7B0Db7c8ABf",
+    "dwapBurnController": "0x3dc98DD581Cb401A9bc3c41654C73237559A7E6b"
   }
 }
