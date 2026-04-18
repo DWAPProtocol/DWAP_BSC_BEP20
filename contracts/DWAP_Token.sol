@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title DWAP Token
- * @dev Immutable governance token for decentralized Web3 infrastructure on BSC
+ * @dev Immutable governance token for decentralized Web3 infrastructure
  *
  * Features:
  * - Max Supply: 1,000,000,000 (1B) — fixed at deployment, no minting
@@ -40,11 +40,9 @@ contract DWAP_Token is
     uint256 public totalBurnedByUsers;
     mapping(address => uint256) public userBurnedAmount;
 
-    // Token metadata
+    // Token metadata (decentralized only)
     string public constant LOGO_IPFS = "ipfs://bafkreiadnn7px3hxm5koqnvtv4lwew4xrdz7w76rl477jcp3oz7rt6svae";
-    string public constant LOGO_URI = "https://gateway.pinata.cloud/ipfs/bafkreiadnn7px3hxm5koqnvtv4lwew4xrdz7w76rl477jcp3oz7rt6svae";
-    string public constant WEBSITE = "https://dwap-token.com";
-    string public constant DESCRIPTION = "DWAP is a governance token for decentralized Web3 infrastructure on BSC";
+    string public constant DESCRIPTION = "DWAP is a governance token for decentralized Web3 infrastructure";
 
     // Events
     event BurnedByOwner(uint256 amount);
@@ -134,23 +132,18 @@ contract DWAP_Token is
         return LOGO_IPFS;
     }
 
-    function getLogoURI() external pure returns (string memory) {
-        return LOGO_URI;
-    }
-
     /**
-     * @dev Get complete token information
+     * @dev Get complete token information (decentralized metadata only)
      */
     function getTokenInfo() external view returns (
         string memory name_,
         string memory symbol_,
         uint8 decimals_,
         uint256 totalSupply_,
-        string memory logoURI_,
-        string memory website_,
+        string memory logoIPFS_,
         string memory description_
     ) {
-        return (name(), symbol(), decimals(), totalSupply(), LOGO_URI, WEBSITE, DESCRIPTION);
+        return (name(), symbol(), decimals(), totalSupply(), LOGO_IPFS, DESCRIPTION);
     }
 
     // ==================== Internal Overrides ====================
