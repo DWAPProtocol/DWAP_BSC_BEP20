@@ -1,0 +1,5 @@
+[33mSolidity 0.8.34 is not fully supported yet. You can still use Hardhat, but some features, like stack traces, might not work correctly.
+
+Learn more at https://v2.hardhat.org/hardhat-runner/docs/reference/solidity-support
+[39m
+Compiled 6 Solidity files successfully (evm target: cancun).
