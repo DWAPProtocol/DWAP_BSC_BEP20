@@ -50,8 +50,8 @@ contract DWAP_Governor is
     )
         Governor("DWAP_Governor")
         GovernorSettings(
-            48 hours,        // 2-day voting delay
-            604800,          // 1-week voting period (604800 seconds)
+            57600,           // 2-day voting delay  (48h × 3600s ÷ 3s/block = 57,600 blocks @ BSC)
+            201600,          // 1-week voting period (7d × 86400s ÷ 3s/block = 201,600 blocks @ BSC)
             1_000_000e18     // 1M DWAP proposal threshold
         )
         GovernorVotes(_token)

@@ -12,10 +12,10 @@ const CHAIN_ID = 97; // BSC Testnet
 const API_URL = `https://api.etherscan.io/v2/api?chainid=${CHAIN_ID}`;
 
 const ADDRESSES = {
-  token: "0x05379799661726B81F527B03431a8D5241338A53",
-  timelock: "0x1A6c99d7beF9eD1251C32e9d6d4d7a40Ff71D10f",
-  governor: "0x16122172afD898a24e47EA663a82c5CBdFA617fB",
-  burnController: "0x4F25be6b9e69d99562a056465EcFC795f1f888Bc",
+  token: "0x6438357D1A36537b864F6734e072661Cf8796759",
+  timelock: "0x751E65B6A30ed777B646dD74860db214A87060B2",
+  governor: "0x489129155846d62f23339E0c74ea2533205Ad9Cf",
+  burnController: "0x0A1bA716EBFb46453d51A1e23e19ff20E14A854D",
 };
 
 // Read build info from hardhat artifacts
@@ -23,8 +23,10 @@ function getBuildInfo() {
   const buildInfoDir = path.join(__dirname, "..", "artifacts", "build-info");
   const files = fs.readdirSync(buildInfoDir);
   if (files.length === 0) throw new Error("No build info found. Run hardhat compile first.");
-  // Use the latest build info
-  const latestFile = files[files.length - 1];
+  // Use the most recently modified build info file (not alphabetical last)
+  const latestFile = files
+    .map((f) => ({ name: f, mtime: fs.statSync(path.join(buildInfoDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime)[0].name;
   return JSON.parse(fs.readFileSync(path.join(buildInfoDir, latestFile), "utf8"));
 }
 

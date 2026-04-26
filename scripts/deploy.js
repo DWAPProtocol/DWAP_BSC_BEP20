@@ -75,12 +75,35 @@ async function main() {
   await tx3.wait();
   console.log(`   Granted CANCELLER_ROLE to Governor\n`);
 
-  // NOTE: To fully decentralize on mainnet, renounce DEFAULT_ADMIN_ROLE:
-  // const DEFAULT_ADMIN_ROLE = await timelockContract.DEFAULT_ADMIN_ROLE();
-  // await timelockContract.renounceRole(DEFAULT_ADMIN_ROLE, deployer.address);
-  // console.log("   Renounced DEFAULT_ADMIN_ROLE from deployer");
+  // ==================== 6. Activate Voting Power (Delegate) ====================
+  console.log("6. Activating deployer voting power (self-delegate)...");
+  const tokenContract = await hre.ethers.getContractAt("DWAP_Token", dwapTokenAddr);
+  const tx4 = await tokenContract.delegate(deployer.address);
+  await tx4.wait();
+  console.log(`   Deployer delegated to self → voting power activated\n`);
 
-  // ==================== 6. Output Summary ====================
+  // ==================== 7. Transfer Ownerships to Timelock (DAO) ====================
+  console.log("7. Transferring ownerships to Timelock (DAO control)...");
+
+  // Transfer Token ownership → Timelock
+  const tx5 = await tokenContract.transferOwnership(dwapTimelockAddr);
+  await tx5.wait();
+  console.log(`   DWAP Token ownership → Timelock ✓`);
+
+  // Transfer BurnController ownership → Timelock
+  const burnControllerContract = await hre.ethers.getContractAt("DWAP_BurnController", burnControllerAddr);
+  const tx6 = await burnControllerContract.transferOwnership(dwapTimelockAddr);
+  await tx6.wait();
+  console.log(`   DWAP BurnController ownership → Timelock ✓\n`);
+
+  // ==================== 8. Renounce Timelock Admin Role ====================
+  console.log("8. Renouncing Timelock DEFAULT_ADMIN_ROLE from deployer...");
+  const DEFAULT_ADMIN_ROLE = await timelockContract.DEFAULT_ADMIN_ROLE();
+  const tx7 = await timelockContract.renounceRole(DEFAULT_ADMIN_ROLE, deployer.address);
+  await tx7.wait();
+  console.log(`   DEFAULT_ADMIN_ROLE renounced — Timelock fully autonomous ✓\n`);
+
+  // ==================== 9. Output Summary ====================
   console.log("=".repeat(60));
   console.log("DEPLOYMENT SUMMARY (Immutable — Non-Upgradeable)");
   console.log("=".repeat(60));
@@ -88,6 +111,15 @@ async function main() {
   console.log(`DWAP Timelock:        ${dwapTimelockAddr}`);
   console.log(`DWAP Governor:        ${dwapGovernorAddr}`);
   console.log(`DWAP Burn Controller: ${burnControllerAddr}`);
+  console.log("=".repeat(60));
+  console.log("OWNERSHIP & ROLES STATUS:");
+  console.log(`  Token.owner         → Timelock (DAO) ✓`);
+  console.log(`  BurnController.owner → Timelock (DAO) ✓`);
+  console.log(`  Timelock.PROPOSER   → Governor ✓`);
+  console.log(`  Timelock.EXECUTOR   → public (address(0)) ✓`);
+  console.log(`  Timelock.CANCELLER  → Governor ✓`);
+  console.log(`  Timelock.ADMIN      → renounced ✓`);
+  console.log(`  Deployer delegation → self ✓`);
   console.log("=".repeat(60));
 
   // Save deployment addresses
@@ -105,6 +137,11 @@ async function main() {
       dwapGovernor: dwapGovernorAddr,
       dwapBurnController: burnControllerAddr,
     },
+    ownershipTransferred: {
+      tokenOwner: dwapTimelockAddr,
+      burnControllerOwner: dwapTimelockAddr,
+      timelockAdminRenounced: true,
+    },
   };
 
   fs.writeFileSync(
@@ -113,11 +150,8 @@ async function main() {
   );
   console.log("\nDeployment data saved to deployment file.\n");
 
-  console.log("NEXT STEPS:");
-  console.log("1. Verify contracts on BscScan: node scripts/verify-direct.js");
-  console.log("2. Transfer Token ownership to Timelock for DAO control");
-  console.log("3. Transfer BurnController ownership to Timelock for DAO control");
-  console.log("4. Renounce Timelock admin role (mainnet only)");
+  console.log("NEXT STEP:");
+  console.log("Verify contracts on BscScan: node scripts/verify-direct.js");
   console.log("5. Community: delegate votes, create proposals, burn tokens\n");
 }
 

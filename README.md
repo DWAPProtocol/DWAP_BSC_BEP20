@@ -58,12 +58,17 @@ All 4 contracts are deployed directly — **no proxies**.
 
 | Contract | Address |
 |---|---|
-| DWAP Token | [`0x05379799661726B81F527B03431a8D5241338A53`](https://testnet.bscscan.com/address/0x05379799661726B81F527B03431a8D5241338A53) |
-| DWAP Timelock | [`0x1A6c99d7beF9eD1251C32e9d6d4d7a40Ff71D10f`](https://testnet.bscscan.com/address/0x1A6c99d7beF9eD1251C32e9d6d4d7a40Ff71D10f) |
-| DWAP Governor | [`0x16122172afD898a24e47EA663a82c5CBdFA617fB`](https://testnet.bscscan.com/address/0x16122172afD898a24e47EA663a82c5CBdFA617fB) |
-| DWAP Burn Controller | [`0x4F25be6b9e69d99562a056465EcFC795f1f888Bc`](https://testnet.bscscan.com/address/0x4F25be6b9e69d99562a056465EcFC795f1f888Bc) |
+| DWAP Token | [`0x6438357D1A36537b864F6734e072661Cf8796759`](https://testnet.bscscan.com/address/0x6438357D1A36537b864F6734e072661Cf8796759) |
+| DWAP Timelock | [`0x751E65B6A30ed777B646dD74860db214A87060B2`](https://testnet.bscscan.com/address/0x751E65B6A30ed777B646dD74860db214A87060B2) |
+| DWAP Governor | [`0x489129155846d62f23339E0c74ea2533205Ad9Cf`](https://testnet.bscscan.com/address/0x489129155846d62f23339E0c74ea2533205Ad9Cf) |
+| DWAP Burn Controller | [`0x0A1bA716EBFb46453d51A1e23e19ff20E14A854D`](https://testnet.bscscan.com/address/0x0A1bA716EBFb46453d51A1e23e19ff20E14A854D) |
 
 All contracts verified on [BscScan Testnet](https://testnet.bscscan.com/).
+
+**Post-deploy setup (executed automatically by deploy script):**
+- Token & BurnController ownership → Timelock (DAO)
+- Timelock DEFAULT_ADMIN_ROLE → renounced
+- Deployer self-delegated voting power
 
 Full deployment data: `deployments/bsc-testnet.json`
 
