@@ -110,14 +110,19 @@ const tx = await governor.execute(targets, values, calldatas, descriptionHash);
 
 ## توزيع التوكنات
 
-### الخطة الموصى بها:
+### الخطة المعتمدة (Hybrid Model — April 2026):
 
-| الفئة | النسبة | الكمية | الوصف |
+| الفئة | النسبة | الكمية | التفاصيل |
 |------|--------|--------|-------|
-| Community/Airdrop | 40% | 400M | توزيع على المجتمع |
-| Liquidity Pools | 20% | 200M | تمويل السيولة على DEXs |
-| Team | 15% | 150M | فريق التطوير (مع Vesting) |
-| Treasury | 15% | 150M | خزينة DAO |
+| Team | 15% | 150M | فريق التطوير — 1yr cliff، 4yr vesting |
+| Advisors / Strategic | 10% | 100M | مستشارون ومستثمرون استراتيجيون — 9mo cliff، 18mo vesting |
+| Community / Airdrop | 10% | 100M | Early contributors & airdrop — يُصدَر بقرار DAO |
+| Ecosystem / Liquidity | 10% | 100M | سيولة DEX، منح للمطورين، شراكات — يُصدَر بقرار DAO |
+| Private Sale | 10% | 100M | Seed round مع whitelist — 90d cliff، 365d vesting |
+| Public Sale (IDO) | 7.5% | 75M | IDO مفتوح — 30 يوم lockup |
+| Treasury (DAO) | 37.5% | 375M | خزينة طويلة المدى بإدارة Timelock |
+
+> **ملاحظة:** Community + Ecosystem + Treasury = 575M محفوظة في Timelock تحت إدارة DAO الكاملة.
 | Ecosystem | 10% | 100M | برامج الشراكات والحوافز |
 
 ## قائمة المراجعة قبل الإطلاق

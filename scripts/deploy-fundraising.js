@@ -16,11 +16,16 @@
  * │ Bucket                      │ Amount (DWAP)  │   %   │
  * ├─────────────────────────────┼────────────────┼───────┤
  * │ Team (VestingFactory)       │  150,000,000   │ 15.0% │
- * │ Advisors (VestingFactory)   │   50,000,000   │  5.0% │
+ * │ Advisors / Strategic        │  100,000,000   │ 10.0% │
+ * │ Community / Airdrop         │  100,000,000   │ 10.0% │
+ * │ Ecosystem / Liquidity       │  100,000,000   │ 10.0% │
  * │ Private Sale                │  100,000,000   │ 10.0% │
  * │ Public Sale (IDO)           │   75,000,000   │  7.5% │
- * │ Treasury / Ecosystem (DAO)  │  625,000,000   │ 62.5% │
+ * │ Treasury (DAO)              │  375,000,000   │ 37.5% │
  * └─────────────────────────────┴────────────────┴───────┘
+ *
+ * Community/Ecosystem allocation sits in Timelock until DAO governance
+ * approves distribution via airdrop campaign or liquidity program.
  *
  * After this script runs:
  *   1. Set the real Merkle root: privateSale.setMerkleRoot(root)
@@ -35,11 +40,14 @@ const fs  = require("fs");
 const path = require("path");
 
 // ── Token Allocation ──────────────────────────────────────────────────────────
-const TEAM_ALLOCATION       = hre.ethers.parseEther("150000000"); // 150 M
-const ADVISOR_ALLOCATION    = hre.ethers.parseEther("50000000");  //  50 M
+const TEAM_ALLOCATION       = hre.ethers.parseEther("150000000"); // 150 M — 1yr cliff, 4yr vest
+const ADVISOR_ALLOCATION    = hre.ethers.parseEther("100000000"); // 100 M — 9mo cliff, 18mo vest
+const COMMUNITY_ALLOCATION  = hre.ethers.parseEther("100000000"); // 100 M — airdrops & early contributors
+const ECOSYSTEM_ALLOCATION  = hre.ethers.parseEther("100000000"); // 100 M — liquidity, grants, integrations
 const PRIVATE_SALE_TOKENS   = hre.ethers.parseEther("100000000"); // 100 M
 const PUBLIC_SALE_TOKENS    = hre.ethers.parseEther("75000000");  //  75 M
-// Treasury (625 M) = remainder transferred to Timelock at the end
+// Treasury (375 M) = remainder transferred to Timelock at the end
+// Community + Ecosystem (200 M total) also held by Timelock pending DAO proposals
 
 // ── Private Sale Parameters ───────────────────────────────────────────────────
 const PRIVATE_TOKENS_PER_BNB   = hre.ethers.parseEther("100000");  // 100k DWAP/BNB
@@ -61,8 +69,8 @@ const PUBLIC_LOCKUP_DURATION   = 30 * 24 * 60 * 60;               //  30 days (s
 // ── Vesting Schedules ─────────────────────────────────────────────────────────
 const TEAM_CLIFF     = 365 * 24 * 60 * 60;  // 1 year  cliff
 const TEAM_DURATION  = 4 * 365 * 24 * 60 * 60; // 4 year vesting
-const ADV_CLIFF      = 180 * 24 * 60 * 60;  // 6 month cliff
-const ADV_DURATION   = 2 * 365 * 24 * 60 * 60; // 2 year vesting
+const ADV_CLIFF      = 270 * 24 * 60 * 60;  // 9 month cliff
+const ADV_DURATION   = 540 * 24 * 60 * 60;  // 18 month vesting
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -157,26 +165,31 @@ async function main() {
   console.log("4. Distributing tokens...");
 
   // 4a. Fund VestingFactory with team + advisor allocation
-  const factoryFund = TEAM_ALLOCATION + ADVISOR_ALLOCATION; // 200 M
+  const factoryFund = TEAM_ALLOCATION + ADVISOR_ALLOCATION; // 250 M
   const tx1 = await tokenContract.transfer(vestingFactoryAddr, factoryFund);
   await tx1.wait();
-  console.log(`   → VestingFactory : ${hre.ethers.formatEther(factoryFund)} DWAP  (team 150M + advisors 50M)`);
+  console.log(`   → VestingFactory   : ${hre.ethers.formatEther(factoryFund)} DWAP  (team 150M + advisors 100M)`);
 
   // 4b. Fund PrivateSale
   const tx2 = await tokenContract.transfer(privateSaleAddr, PRIVATE_SALE_TOKENS);
   await tx2.wait();
-  console.log(`   → PrivateSale    : ${hre.ethers.formatEther(PRIVATE_SALE_TOKENS)} DWAP`);
+  console.log(`   → PrivateSale      : ${hre.ethers.formatEther(PRIVATE_SALE_TOKENS)} DWAP`);
 
   // 4c. Fund PublicSale
   const tx3 = await tokenContract.transfer(publicSaleAddr, PUBLIC_SALE_TOKENS);
   await tx3.wait();
-  console.log(`   → PublicSale     : ${hre.ethers.formatEther(PUBLIC_SALE_TOKENS)} DWAP`);
+  console.log(`   → PublicSale       : ${hre.ethers.formatEther(PUBLIC_SALE_TOKENS)} DWAP`);
 
-  // 4d. Remaining tokens → Timelock (treasury / ecosystem / liquidity)
-  const treasuryAmount = await tokenContract.balanceOf(deployer.address);
-  const tx4 = await tokenContract.transfer(timelockAddr, treasuryAmount);
+  // 4d. Remaining tokens → Timelock (community 100M + ecosystem 100M + treasury 375M = 575M)
+  //     ⚠️ MAINNET: Community (100M) should transfer to a separate community multisig wallet
+  //     before this step. On testnet all goes to Timelock for simplicity.
+  const timelockTotal = await tokenContract.balanceOf(deployer.address);
+  const tx4 = await tokenContract.transfer(timelockAddr, timelockTotal);
   await tx4.wait();
-  console.log(`   → Timelock (DAO) : ${hre.ethers.formatEther(treasuryAmount)} DWAP  (treasury + ecosystem)`);
+  console.log(`   → Timelock (DAO)   : ${hre.ethers.formatEther(timelockTotal)} DWAP`);
+  console.log(`     ↳ Community/Airdrop   : 100,000,000 (DAO releases via governance)`);
+  console.log(`     ↳ Ecosystem/Liquidity : 100,000,000 (DEX liquidity + grants)`);
+  console.log(`     ↳ Treasury           : 375,000,000 (long-term protocol reserve)`);
   console.log();
 
   // ── 5. Create team & advisor vestings ─────────────────────────────────────
@@ -207,9 +220,9 @@ async function main() {
       revocable      : true,
     },
     {
-      // ── Advisors — 50M DWAP, 2yr vest, 6mo cliff
+      // ── Advisors / Strategic Investors — 100M DWAP, 18mo vest, 9mo cliff
       beneficiary    : deployer.address, // TODO: replace with real address
-      amount         : hre.ethers.parseEther("50000000"),
+      amount         : hre.ethers.parseEther("100000000"),
       startTime      : vestingStart,
       cliffDuration  : BigInt(ADV_CLIFF),
       vestingDuration: BigInt(ADV_DURATION),
@@ -256,10 +269,13 @@ async function main() {
   console.log(`DWAP_PublicSale     : ${publicSaleAddr}`);
   console.log("─".repeat(65));
   console.log("Token Distribution:");
-  console.log(`  VestingFactory (team+adv) :  200,000,000 DWAP  (20.0%)`);
-  console.log(`  PrivateSale               :  100,000,000 DWAP  (10.0%)`);
-  console.log(`  PublicSale                :   75,000,000 DWAP  ( 7.5%)`);
-  console.log(`  Timelock (treasury/eco)   :  625,000,000 DWAP  (62.5%)`);
+  console.log(`  Team (VestingFactory)     :  150,000,000 DWAP  (15.0%)`);
+  console.log(`  Advisors / Strategic      :  100,000,000 DWAP  (10.0%)  9mo cliff, 18mo vest`);
+  console.log(`  Community / Airdrop       :  100,000,000 DWAP  (10.0%)  DAO-released`);
+  console.log(`  Ecosystem / Liquidity     :  100,000,000 DWAP  (10.0%)  DAO-released`);
+  console.log(`  Private Sale              :  100,000,000 DWAP  (10.0%)`);
+  console.log(`  Public Sale               :   75,000,000 DWAP  ( 7.5%)`);
+  console.log(`  Treasury (DAO)            :  375,000,000 DWAP  (37.5%)`);
   console.log("─".repeat(65));
   console.log("Private Sale Config:");
   console.log(`  Rate      : 100,000 DWAP / BNB  (~$0.006 @ $600 BNB)`);
@@ -300,10 +316,14 @@ async function main() {
     },
     vestingVaults: vestingAddrs,
     tokenAllocation: {
-      vestingFactory : "200,000,000 DWAP (team 150M + advisors 50M)",
-      privateSale    : "100,000,000 DWAP",
-      publicSale     :  "75,000,000 DWAP",
-      timelockTreasury: "625,000,000 DWAP",
+      team              : "150,000,000 DWAP (15.0%) — 1yr cliff, 4yr vest",
+      advisors          : "100,000,000 DWAP (10.0%) — 9mo cliff, 18mo vest",
+      community         : "100,000,000 DWAP (10.0%) — held in Timelock, DAO-released",
+      ecosystem         : "100,000,000 DWAP (10.0%) — held in Timelock, DAO-released",
+      privateSale       : "100,000,000 DWAP (10.0%)",
+      publicSale        :  "75,000,000 DWAP  (7.5%)",
+      timelockTreasury  : "375,000,000 DWAP (37.5%)",
+      timelockTotalHeld : "575,000,000 DWAP (community+ecosystem+treasury)",
     },
     privateSaleConfig: {
       tokensPerBNB   : "100,000 DWAP/BNB",
