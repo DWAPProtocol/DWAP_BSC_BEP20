@@ -1,0 +1,79 @@
+
+=================================================================
+  DWAP FUNDRAISING DEPLOYMENT
+=================================================================
+
+Network  : bscTestnet
+Deployer : 0x4D28DE16E06FBc99EF5405aa0354B6453BA25447
+
+0. Loading core deployment addresses...
+   Loaded deployment: deployment-bscTestnet-1777171309804.json
+   DWAP Token   : 0x6438357D1A36537b864F6734e072661Cf8796759
+   DWAP Timelock: 0x751E65B6A30ed777B646dD74860db214A87060B2
+
+   Deployer DWAP balance: 1000000000.0 DWAP
+
+1. Deploying DWAP_VestingFactory...
+   DWAP_VestingFactory: 0x8425b433AA4c9164445cAEc8a4E5d266F7Cd7369
+
+2. Deploying DWAP_PrivateSale...
+   DWAP_PrivateSale: 0x10C7Ca18ddca77624619785B13dC7B31e811B7C0
+
+3. Deploying DWAP_PublicSale...
+   DWAP_PublicSale: 0xe2f7D0E296205B0C496b950848B01a834776326f
+
+4. Distributing tokens...
+   → VestingFactory : 200000000.0 DWAP  (team 150M + advisors 50M)
+   → PrivateSale    : 100000000.0 DWAP
+   → PublicSale     : 75000000.0 DWAP
+   → Timelock (DAO) : 625000000.0 DWAP  (treasury + ecosystem)
+
+5. Creating team & advisor vesting schedules...
+   Created 3 vesting vault(s):
+   [1] 0xb61DCC630DF86Ffe3C8f31916228D5db55766ac6
+   [2] 0x5de51bC470867636bff8882F0B01218089088f82
+   [3] 0x35A9570b55c8E193f7D3E65E339E8C1A3C0FA7e4
+
+6. Transferring ownership to Timelock (DAO)...
+   VestingFactory ownership → Timelock ✓
+   PrivateSale ownership    → Timelock ✓
+   PublicSale ownership     → Timelock ✓
+
+=================================================================
+  FUNDRAISING DEPLOYMENT SUMMARY
+=================================================================
+DWAP_VestingFactory : 0x8425b433AA4c9164445cAEc8a4E5d266F7Cd7369
+DWAP_PrivateSale    : 0x10C7Ca18ddca77624619785B13dC7B31e811B7C0
+DWAP_PublicSale     : 0xe2f7D0E296205B0C496b950848B01a834776326f
+─────────────────────────────────────────────────────────────────
+Token Distribution:
+  VestingFactory (team+adv) :  200,000,000 DWAP  (20.0%)
+  PrivateSale               :  100,000,000 DWAP  (10.0%)
+  PublicSale                :   75,000,000 DWAP  ( 7.5%)
+  Timelock (treasury/eco)   :  625,000,000 DWAP  (62.5%)
+─────────────────────────────────────────────────────────────────
+Private Sale Config:
+  Rate      : 100,000 DWAP / BNB  (~$0.006 @ $600 BNB)
+  Hard Cap  : 1,000 BNB  |  Soft Cap: 100 BNB
+  Min/Max   : 0.1 BNB / 20 BNB per wallet
+  Vesting   : 90-day cliff, 365-day total
+Public Sale Config:
+  Rate      : 50,000 DWAP / BNB  (~$0.012 @ $600 BNB)
+  Hard Cap  : 1,500 BNB  |  Soft Cap: 150 BNB
+  Min/Max   : 0.05 BNB / 5 BNB per wallet
+  Lockup    : 30 days after finalization
+─────────────────────────────────────────────────────────────────
+All contracts owned by Timelock (DAO) ✓
+Treasury (625M DWAP) held by Timelock ✓
+=================================================================
+
+NEXT STEPS:
+  1. Generate Merkle root for private whitelist:
+     npx hardhat run scripts/generate-merkle.js
+  2. Propose via DAO: privateSale.setMerkleRoot(root)
+  3. Propose via DAO: privateSale.startSale()
+  4. Verify contracts:
+     node scripts/verify-fundraising.js
+
+Deployment data saved to: deployment-fundraising-bscTestnet-1777183171225.json
+

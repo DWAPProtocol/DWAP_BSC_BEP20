@@ -1,0 +1,54 @@
+DWAP Fundraising — Contract Verification
+Chain ID : 97 (BSC Testnet)
+API Key  : KDV2FT...
+
+Using deployment file: deployment-fundraising-bscTestnet-1777183171225.json
+
+=======================================================
+Verifying : DWAP_VestingFactory
+Address   : 0x8425b433AA4c9164445cAEc8a4E5d266F7Cd7369
+=======================================================
+  Compiler : v0.8.34+commit.80d5c536
+  Contract : contracts/fundraising/DWAP_VestingFactory.sol:DWAP_VestingFactory
+  Submitting...
+  Response : {"status":"1","message":"OK","result":"3j8msxwyuvj8xnndzgjuytbt8xmdxrdugjaghgr4udrifeeqbu"}
+  Status check 1: Pass - Verified
+  ✅ DWAP_VestingFactory verified!
+
+=======================================================
+Verifying : DWAP_PrivateSale
+Address   : 0x10C7Ca18ddca77624619785B13dC7B31e811B7C0
+=======================================================
+  Compiler : v0.8.34+commit.80d5c536
+  Contract : contracts/fundraising/DWAP_PrivateSale.sol:DWAP_PrivateSale
+  Submitting...
+  Response : {"status":"1","message":"OK","result":"yqpnxa9gembhawhqseeyvjqgalbuctsvcwspvtlz8c3vtddn1q"}
+  Status check 1: Pass - Verified
+  ✅ DWAP_PrivateSale verified!
+
+=======================================================
+Verifying : DWAP_PublicSale
+Address   : 0xe2f7D0E296205B0C496b950848B01a834776326f
+=======================================================
+  Compiler : v0.8.34+commit.80d5c536
+  Contract : contracts/fundraising/DWAP_PublicSale.sol:DWAP_PublicSale
+  Submitting...
+  Response : {"status":"1","message":"OK","result":"mrc4zfziecyfuku5f63tjqteqjhtdw9etnxtuzvcpmea1t8h3n"}
+  Status check 1: Pass - Verified
+  ✅ DWAP_PublicSale verified!
+
+=======================================================
+Verifying : DWAP_Vesting (team slot 1)
+Address   : 0xb61DCC630DF86Ffe3C8f31916228D5db55766ac6
+=======================================================
+  Compiler : v0.8.34+commit.80d5c536
+  Contract : contracts/fundraising/DWAP_Vesting.sol:DWAP_Vesting
+  Submitting...
+  Response : {"status":"1","message":"OK","result":"xxk85xxneez6wh4kdgn2b6br4ybtexbzrrycujiawxvheihwvf"}
+  Status check 1: Pass - Verified
+  ✅ DWAP_Vesting (team slot 1) verified!
+
+=======================================================
+Verification complete.
+=======================================================
+
